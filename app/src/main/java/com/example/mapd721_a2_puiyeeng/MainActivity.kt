@@ -1,6 +1,11 @@
 package com.example.mapd721_a2_puiyeeng
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
+import android.content.ContentUris
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
@@ -143,7 +148,7 @@ fun MainScreen(context: ComponentActivity) {
                     .height(60.dp)
                     .padding(start = 16.dp, end = 16.dp),
                 onClick = {
-
+                    addContact(context, contactName, contactNumber)
                 },
             )
             {
@@ -278,6 +283,36 @@ fun loadContacts(context: ComponentActivity): List<Contact> {
     return contacts
 }
 
+fun addContact(context: Context, name: String, phoneNumber: String): Boolean {
+    val contentResolver: ContentResolver = context.contentResolver
+    val rawContactValues = ContentValues()
+
+    // Insert empty ContentValues
+    val nameUri = contentResolver.insert(ContactsContract.RawContacts.CONTENT_URI, rawContactValues)
+    // get rawContactId, unique identifier for each raw contact, for new contact creation
+    val rawContactId = nameUri?.lastPathSegment?.toLongOrNull()
+
+    // Check if the raw contact ID is valid
+    if (rawContactId != null) {
+        val nameValues = ContentValues()
+        nameValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+        nameValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+        nameValues.put(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+        // Insert contact name
+        contentResolver.insert(ContactsContract.Data.CONTENT_URI, nameValues)
+
+        val numberValues = ContentValues()
+        numberValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+        numberValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+        numberValues.put(ContactsContract.CommonDataKinds.Phone.NUMBER, phoneNumber)
+        // Insert contact phone number
+        contentResolver.insert(ContactsContract.Data.CONTENT_URI, numberValues)
+
+        return true
+    }
+
+    return false
+}
 
 // Preview of Main Screen
 @Preview(showBackground = true)
