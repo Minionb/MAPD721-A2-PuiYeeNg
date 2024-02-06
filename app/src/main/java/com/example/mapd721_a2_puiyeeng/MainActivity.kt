@@ -1,25 +1,34 @@
 package com.example.mapd721_a2_puiyeeng
 
+import android.annotation.SuppressLint
 import android.os.Bundle
+import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +56,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen()
+                    MainScreen(context = this)
                 }
             }
         }
@@ -55,10 +64,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(context: ComponentActivity) {
 
     var contactName by remember { mutableStateOf("") }
     var contactNumber by remember { mutableStateOf("") }
+    var contacts by remember { mutableStateOf(emptyList<Contact>()) }
+    var fetchButtonClicked by remember { mutableStateOf(false) }
 
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -111,7 +122,8 @@ fun MainScreen() {
                     .height(60.dp)
                     .padding(start = 16.dp, end = 16.dp),
                 onClick = {
-
+                    fetchButtonClicked = true
+                    contacts = loadContacts(context)
                 },
             )
             {
@@ -144,6 +156,8 @@ fun MainScreen() {
             }
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
+        ContactsList(contacts, fetchButtonClicked)
             Box(modifier = Modifier.weight(1f)) {
                 Spacer(modifier = Modifier.fillMaxWidth())
             }
@@ -172,12 +186,104 @@ fun MainScreen() {
         }
     }
 
+@Composable
+fun ContactsList(contacts: List<Contact>, fetchButtonClicked:Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Contacts",
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+
+    // Display the list of contacts or a message if the list is empty
+    if (fetchButtonClicked) {
+        if (contacts.isEmpty()) {
+            Text(text = "No contacts available")
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                // Display each contact in a row
+                items(contacts) { contact ->
+                    ContactItem(contact)
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun ContactItem(contact: Contact) {
+    // Display each contact in a row with an icon and text
+
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = Icons.Default.Person, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = contact.displayName)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = contact.phoneNumber)
+        }
+
+}
+
+// Data class to represent a contact
+data class Contact(val displayName: String, val phoneNumber: String)
+
+@SuppressLint("Range")
+fun loadContacts(context: ComponentActivity): List<Contact> {
+    val contacts = mutableListOf<Contact>()
+
+    // Specify the columns to retrieve from the contacts table
+    val projection = arrayOf(
+        ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        ContactsContract.CommonDataKinds.Phone.NUMBER
+    )
+
+    // Use the content resolver to query contacts
+    context.contentResolver.query(
+        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+        projection,
+        null,
+        null,
+        ContactsContract.Contacts.DISPLAY_NAME_PRIMARY
+    )?.use { cursor ->
+        // Check if the cursor has data
+        if (cursor.moveToFirst()) {
+            val displayNameIndex =
+                cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+            val phoneNumberIndex =
+                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+
+            do {
+                // Retrieve display name and phone number from the cursor and add to the list
+                val displayName = cursor.getString(displayNameIndex)
+                val phoneNumber = cursor.getString(phoneNumberIndex)
+
+                contacts.add(Contact(displayName, phoneNumber))
+            } while (cursor.moveToNext())
+        }
+    }
+
+    return contacts
+}
+
 
 // Preview of Main Screen
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
     MAPD721A2PuiYeeNgTheme {
-        MainScreen()
+        MainScreen(context = ComponentActivity())
     }
 }
