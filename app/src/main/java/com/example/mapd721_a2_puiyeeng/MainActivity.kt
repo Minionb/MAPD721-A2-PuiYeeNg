@@ -8,6 +8,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.telephony.PhoneNumberUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -162,10 +163,25 @@ fun MainScreen(context: ComponentActivity) {
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-        ContactsList(contacts, fetchButtonClicked)
-            Box(modifier = Modifier.weight(1f)) {
-                Spacer(modifier = Modifier.fillMaxWidth())
+        Column (modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Contacts",
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center
+                )
             }
+
+            // Display Contact List
+            Box(modifier = Modifier.weight(1f)) {
+                ContactsList(contacts, fetchButtonClicked)
+            }
+
             // Box with student info
             Box(
                 modifier = Modifier
@@ -189,29 +205,19 @@ fun MainScreen(context: ComponentActivity) {
                 }
             }
         }
+
+        }
     }
 
 @Composable
 fun ContactsList(contacts: List<Contact>, fetchButtonClicked:Boolean) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Contacts",
-            fontSize = 18.sp,
-            textAlign = TextAlign.Center
-        )
-    }
 
     // Display the list of contacts or a message if the list is empty
     if (fetchButtonClicked) {
         if (contacts.isEmpty()) {
             Text(text = "No contacts available")
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 // Display each contact in a row
                 items(contacts) { contact ->
                     ContactItem(contact)
@@ -219,6 +225,22 @@ fun ContactsList(contacts: List<Contact>, fetchButtonClicked:Boolean) {
             }
         }
     }
+
+}
+
+// format phone number to (xxx)-xxx-xxxx
+fun formatPhoneNumber(number: String): String {
+    val cleanedNumber = number.replace("[^\\d]".toRegex(), "") // Remove any non-digit characters
+
+    if (cleanedNumber.length != 10) {
+        return number // Return the original number if it doesn't have 10 digits
+    }
+
+    val areaCode = cleanedNumber.substring(0, 3)
+    val prefix = cleanedNumber.substring(3, 6)
+    val lineNumber = cleanedNumber.substring(6)
+
+    return "($areaCode) $prefix-$lineNumber"
 }
 
 
@@ -228,7 +250,7 @@ fun ContactItem(contact: Contact) {
 
         Row(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
 
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -287,6 +309,8 @@ fun addContact(context: Context, name: String, phoneNumber: String): Boolean {
     val contentResolver: ContentResolver = context.contentResolver
     val rawContactValues = ContentValues()
 
+    val formattedNumber = formatPhoneNumber(phoneNumber)
+
     // Insert empty ContentValues
     val nameUri = contentResolver.insert(ContactsContract.RawContacts.CONTENT_URI, rawContactValues)
     // get rawContactId, unique identifier for each raw contact, for new contact creation
@@ -304,7 +328,7 @@ fun addContact(context: Context, name: String, phoneNumber: String): Boolean {
         val numberValues = ContentValues()
         numberValues.put(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
         numberValues.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-        numberValues.put(ContactsContract.CommonDataKinds.Phone.NUMBER, phoneNumber)
+        numberValues.put(ContactsContract.CommonDataKinds.Phone.NUMBER, formattedNumber)
         // Insert contact phone number
         contentResolver.insert(ContactsContract.Data.CONTENT_URI, numberValues)
 
